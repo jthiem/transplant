@@ -49,19 +49,9 @@ class Matlab:
                              ['-r', "addpath('{}'); transplant {}"
                               .format(dirname(__file__),
                                       'ipc://' + self.ipcfile.name)],
-                             stdin=DEVNULL, start_new_session=True)
-        self.eval('') # wait for Matlab startup to complete
-        # in some cases, the destructor does not work for some reason.
-        # Make sure to definitely kill Matlab at shutdown, at least.
-        atexit.register(self.process.terminate)
-
-    def eval(self, string, nargout=-1):
-        """Send some code to Matlab to execute."""
-        response = self.send_message('eval', string=string, nargout=nargout)
-        if 'conout' in response:
-            print(response['conout'])
-        if response['type'] == 'value':
-            return response['value']
+                             stdin=DEVNULL, stdout=PIPE, start_new_session=True)
+        self._start_reader()
+        self.eval('close') # no-op. Wait for Matlab startup to complete.
 
     def put(self, name, value):
         """Save a named variable."""
@@ -98,8 +88,6 @@ class Matlab:
         args = list(args)
         response = self.send_message('call', name=name, args=args,
                                      nargout=nargout)
-        if 'conout' in response:
-            print(response['conout'])
         if response['type'] == 'value':
             return response['value']
 
